@@ -1,4 +1,7 @@
 #!/bin/bash
+WHISPER_SERVER_ADDRESS=${WHISPER_SERVER_ADDRESS:-localhost}
+WHISPER_PORT=${WHISPER_PORT:-8000}
+
 
 # Check if a filename is provided as an argument
 if [ -z "$1" ]; then
@@ -22,8 +25,7 @@ if [[ "${FILENAME##*.}" != "wav" ]]; then
 fi
 
 # Send the WAV file to the Whisper API server and get the transcription
-RESPONSE=$(curl -s -X POST "http://localhost:8001/transcribe" -H "Content-Type: multipart/form-data" -F "file=@$FILENAME;type=audio/wav")
-
+RESPONSE=$(curl -s -X POST "$WHISPER_SERVER_ADDRESS:$WHISPER_PORT" -H "Content-Type: multipart/form-data" -F "file=@$FILENAME;type=audio/wav")
 # Check if the response contains an error message
 if [[ "$RESPONSE" == *"detail"* ]]; then
   echo "Error occurred while transcribing the audio file. Response from server:"
