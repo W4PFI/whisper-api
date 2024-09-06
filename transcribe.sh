@@ -1,6 +1,6 @@
 #!/bin/bash
 WHISPER_SERVER_ADDRESS=${WHISPER_SERVER_ADDRESS:-localhost}
-WHISPER_PORT=${WHISPER_PORT:-8000}
+WHISPER_PORT=${WHISPER_PORT:-8001}
 
 
 # Check if a filename is provided as an argument
