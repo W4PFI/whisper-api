@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 import whisper
 import os
+import io
 
 app = FastAPI()
 
