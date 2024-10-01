@@ -30,3 +30,28 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     # Return the transcribed text
     return result["text"]
+
+@app.post("/transcribe_stream", response_class=PlainTextResponse)
+async def transcribe_audio_stream(request: Request):
+    # Check if the content type is correct
+    if request.headers.get('content-type') not in ["audio/wav", "audio/x-wav"]:
+        raise HTTPException(status_code=400, detail="Only WAV streams are supported.")
+    
+    # Create an empty buffer to hold the audio stream
+    audio_stream = io.BytesIO()
+    
+    # Read the stream chunk by chunk
+    async for chunk in request.stream():
+        audio_stream.write(chunk)
+    
+    # Seek back to the start of the buffer
+    audio_stream.seek(0)
+    
+    # Transcribe audio stream
+    result = model.transcribe(audio_stream)
+
+    # Log the transcribed text to Docker logs
+    print(f"Transcribed text: {result['text']}")
+    
+    # Return the transcribed text
+    return result["text"]
