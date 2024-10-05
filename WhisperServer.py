@@ -39,8 +39,12 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
 
         # Load pyannote speaker diarization pipeline with the token
         # Model source : https://huggingface.co/pyannote/speaker-diarization
+        Pipeline.from_pretrained(
+            "pyannote/speaker-segmentation", 
+            use_auth_token=huggingface_token
+        )
         diarization_pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization@2.1", 
+            "pyannote/speaker-diarization", 
             use_auth_token=huggingface_token
         )
 
