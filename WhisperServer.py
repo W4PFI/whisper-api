@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Query, BackgroundTasks
 from fastapi.responses import PlainTextResponse
 import whisper
 import os
@@ -70,6 +70,30 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
 
     return "\n".join(result)
 
+def process_transcription_background(file_path: str, transcript_file_path: str, diarization: bool):
+    """
+    Background task to transcribe and save the result to a file.
+
+    Args:
+        file_path: Path to the uploaded audio file.
+        transcript_file_path: Path to save the transcription.
+        diarization: Whether to use speaker diarization.
+    """
+    try:
+        # Perform transcription and optionally diarization
+        transcribed_text = transcribe_and_diarize(file_path, diarization)
+
+        # Save the transcription result
+        with open(transcript_file_path, "w") as transcript_file:
+            transcript_file.write(transcribed_text)
+        
+        print(f"Transcription saved to {transcript_file_path}")
+
+    finally:
+        # Clean up the audio file
+        os.remove(file_path)
+
+
 # Define the transcribe endpoint for file uploads
 @app.post("/transcribe", response_class=PlainTextResponse)
 async def transcribe_audio(file: UploadFile = File(...), diarization: bool = Query(False)):
@@ -90,7 +114,13 @@ async def transcribe_audio(file: UploadFile = File(...), diarization: bool = Que
 
     return transcribed_text
 
-# Define the transcribe_stream endpoint for streamed audio
+# Endpoint for streaming audio transcription
+# 
+# This endpoint receives an audio stream (WAV format) as input, reads the stream 
+# chunk by chunk, and writes it to a temporary file. The Whisper model is used to 
+# transcribe the audio, with an optional feature to identify different speakers 
+# using speaker diarization. The final transcription, including speaker labels 
+# if requested, is returned to the client.
 @app.post("/transcribe_stream", response_class=PlainTextResponse)
 async def transcribe_audio_stream(request: Request, diarization: bool = Query(False)):
     if request.headers.get('content-type') not in ["audio/wav", "audio/x-wav"]:
@@ -112,3 +142,36 @@ async def transcribe_audio_stream(request: Request, diarization: bool = Query(Fa
     os.remove(temp_file_path)
 
     return transcribed_text
+
+# Background transcription endpoint for streamed audio
+#
+# This endpoint accepts an audio stream (WAV format) and writes it to a temporary file.
+# Unlike the regular transcribe endpoint, it immediately returns a success message to the client 
+# without waiting for the transcription process to complete. The transcription, including optional 
+# speaker diarization, runs asynchronously in the background, and the resulting text is saved 
+# to a specified directory, defined by the TRANSCRIPT_DIR environment variable.
+@app.post("/transcribe_stream_offline")
+async def transcribe_audio_offline(request: Request, background_tasks: BackgroundTasks, diarization: bool = Query(False)):
+    if request.headers.get('content-type') not in ["audio/wav", "audio/x-wav"]:
+        raise HTTPException(status_code=400, detail="Only WAV streams are supported.")
+
+    audio_stream = io.BytesIO()
+    async for chunk in request.stream():
+        audio_stream.write(chunk)
+
+    audio_stream.seek(0)
+
+    # Save audio to a temporary file
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
+        temp_audio_file.write(audio_stream.getvalue())
+        temp_file_path = temp_audio_file.name
+
+    # Define the transcript output path based on environment variable TRANSCRIPT_DIR
+    transcript_dir = os.getenv("TRANSCRIPT_DIR", "/tmp")
+    transcript_file_path = os.path.join(transcript_dir, f"{os.path.basename(temp_file_path)}_transcription.txt")
+
+    # Schedule background transcription
+    background_tasks.add_task(process_transcription_background, temp_file_path, transcript_file_path, diarization)
+
+    return {"detail": "Transcription is being processed in the background."}
+
