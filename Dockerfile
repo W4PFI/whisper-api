@@ -19,5 +19,9 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE 8000
 
+# Set environment variables (optional) - required for diarization (speaker lables)
+# You can specify the token in the Dockerfile, but it's more secure to pass it at runtime.
+# ENV HUGGINGFACE_TOKEN your_token_here
+
 # Command to run the FastAPI server
 CMD ["uvicorn", "WhisperServer:app", "--host", "0.0.0.0", "--port", "8000"]
