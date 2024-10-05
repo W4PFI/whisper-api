@@ -4,9 +4,11 @@ import whisper
 import os
 import tempfile
 import io
+import threading
 from pyannote.audio import Pipeline
 
 app = FastAPI()
+lock = threading.Lock();
 
 # Load Whisper model
 model = whisper.load_model("base")
@@ -15,6 +17,8 @@ diarization_pipeline = None
 def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
     """
     Transcribe audio and optionally perform speaker diarization.
+    This function is thread-safe and ensures only one transcription and diarization
+    process runs at a time using a lock.
 
     Args:
         file_path: The path to the audio file.
@@ -23,48 +27,49 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
     Returns:
         Transcribed text with optional speaker labels.
     """
-    # Transcribe the audio once using Whisper
-    transcription = model.transcribe(file_path)
+    # Use lock to ensure thread-safety
+    with lock:
+        # Transcribe the audio once using Whisper
+        transcription = model.transcribe(file_path)
 
-    # If diarization is not requested, return the plain transcription
-    if not diarization:
-        return transcription["text"]
+        # If diarization is not requested, return the plain transcription
+        if not diarization:
+            return transcription["text"]
 
-    # Initialize diarization pipeline only when needed
-    global diarization_pipeline
-    if diarization_pipeline is None:
-        huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
-        if not huggingface_token:
-            raise RuntimeError("HUGGINGFACE_TOKEN environment variable is not set")
+        # Initialize diarization pipeline only when needed
+        global diarization_pipeline
+        if diarization_pipeline is None:
+            huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
+            if not huggingface_token:
+                raise RuntimeError("HUGGINGFACE_TOKEN environment variable is not set")
 
-        # Load pyannote speaker diarization pipeline with the token
-        # Model source : https://huggingface.co/pyannote/speaker-diarization
-        diarization_pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization", 
-            use_auth_token=huggingface_token
-        )
+            # Load pyannote speaker diarization pipeline with the token
+            diarization_pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization", 
+                use_auth_token=huggingface_token
+            )
 
-    # Perform speaker diarization
-    diarization_result = diarization_pipeline(file_path)
+        # Perform speaker diarization
+        diarization_result = diarization_pipeline(file_path)
 
-    # Combine transcription with speaker information
-    result = []
-    for segment in transcription['segments']:
-        start_time = segment['start']
-        end_time = segment['end']
-        text = segment['text']
+        # Combine transcription with speaker information
+        result = []
+        for segment in transcription['segments']:
+            start_time = segment['start']
+            end_time = segment['end']
+            text = segment['text']
 
-        # Find the corresponding speaker based on time
-        speaker_label = "Unknown Speaker"
-        for turn, _, speaker in diarization_result.itertracks(yield_label=True):
-            if turn.start <= start_time <= turn.end:
-                speaker_label = speaker
-                break
+            # Find the corresponding speaker based on time
+            speaker_label = "Unknown Speaker"
+            for turn, _, speaker in diarization_result.itertracks(yield_label=True):
+                if turn.start <= start_time <= turn.end:
+                    speaker_label = speaker
+                    break
 
-        # Append the result with the speaker label
-        result.append(f"Speaker {speaker_label}: {text}")
+            # Append the result with the speaker label
+            result.append(f"Speaker {speaker_label}: {text}")
 
-    return "\n".join(result)
+        return "\n".join(result)
 
 def process_transcription_background(file_path: str, transcript_file_path: str, diarization: bool):
     """
