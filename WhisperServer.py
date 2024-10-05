@@ -38,8 +38,9 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
             raise RuntimeError("HUGGINGFACE_TOKEN environment variable is not set")
 
         # Load pyannote speaker diarization pipeline with the token
+        # Model source : https://huggingface.co/pyannote/speaker-diarization
         diarization_pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization", 
+            "pyannote/speaker-diarization@2.1", 
             use_auth_token=huggingface_token
         )
 
