@@ -38,21 +38,34 @@ async def transcribe_audio_stream(request: Request):
     if request.headers.get('content-type') not in ["audio/wav", "audio/x-wav"]:
         raise HTTPException(status_code=400, detail="Only WAV streams are supported.")
     
-    # Create an empty buffer to hold the audio stream
+    # Create an empty buffer to hold the streamed audio data
     audio_stream = io.BytesIO()
     
-    # Read the stream chunk by chunk
+    # Read the stream chunk by chunk and write to the buffer
     async for chunk in request.stream():
         audio_stream.write(chunk)
     
     # Seek back to the start of the buffer
     audio_stream.seek(0)
-    
-    # Transcribe audio stream
-    result = model.transcribe(audio_stream)
+
+    # Create a temporary file using `tempfile`
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
+        # Write the streamed audio to the temp file
+        temp_audio_file.write(audio_stream.getvalue())
+        temp_file_path = temp_audio_file.name
+
+    # Optional: Log or verify the temp file creation
+    file_size = os.path.getsize(temp_file_path)
+    print(f"Saved temp audio file at {temp_file_path}, size: {file_size} bytes")
+
+    # Transcribe the saved temp WAV file using Whisper
+    result = model.transcribe(temp_file_path)
 
     # Log the transcribed text to Docker logs
     print(f"Transcribed text: {result['text']}")
-    
+
+    # Clean up: Delete the temporary file after processing
+    # os.remove(temp_file_path)
+
     # Return the transcribed text
     return result["text"]
