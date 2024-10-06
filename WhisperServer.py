@@ -50,6 +50,8 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
                 "pyannote/speaker-diarization", 
                 use_auth_token=huggingface_token
             )
+            diarization_pipeline.parameters["min_duration_on"] = 1.0  # Speaker must talk for at least 1 second to be counted
+            diarization_pipeline.parameters["min_duration_off"] = 0.2  # Pause of at least 0.5 seconds to count as a speaker switch
 
         # Perform speaker diarization
         diarization_result = diarization_pipeline(file_path)
