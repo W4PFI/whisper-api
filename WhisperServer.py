@@ -169,7 +169,13 @@ async def transcribe_audio_offline(request: Request, background_tasks: Backgroun
 
     # Define the transcript output path based on environment variable TRANSCRIPT_DIR
     transcript_dir = os.getenv("TRANSCRIPT_DIR", "/tmp")
-    transcript_file_path = os.path.join(transcript_dir, f"{os.path.basename(temp_file_path)}_transcription.txt")
+    
+    # Generate the current timestamp in the desired format
+    timestamp = datetime.now().strftime("%m%d%Y%H%M%S")
+    
+    # Generate a unique filename using the timestamp and UUID
+    transcript_filename = f"transcript_{timestamp}_{uuid.uuid4()}.txt"
+    transcript_file_path = os.path.join(transcript_dir, transcript_filename)
 
     # Schedule background transcription
     background_tasks.add_task(process_transcription_background, temp_file_path, transcript_file_path, diarization)
