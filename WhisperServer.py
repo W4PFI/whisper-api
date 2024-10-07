@@ -39,7 +39,7 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
 
         # If diarization is not requested, return the plain transcription
         if not diarization:
-            return transcription["text"]
+            return timestamp + transcription["text"]
 
         # Initialize diarization pipeline only when needed
         global diarization_pipeline
