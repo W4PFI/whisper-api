@@ -50,12 +50,12 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
 
             # Load pyannote speaker diarization pipeline with the token
             diarization_pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization", 
+                "pyannote/speaker-diarization-3.1", 
                 use_auth_token=huggingface_token
             )
           
         # Perform speaker diarization
-        diarization_result = diarization_pipeline(file_path, min_duration_on=1.0, min_duration_off=0.3)
+        diarization_result = diarization_pipeline(file_path)
 
         # Combine transcription with speaker information
         result = []
