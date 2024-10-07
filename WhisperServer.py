@@ -29,7 +29,7 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
     Returns:
         Transcribed text with optional speaker labels.
     """
-    timestamp = f"Transcript Date : {datetime.datetime.now(tz=datetime.timezone.utc):%Y-%m-%d %H:%M:%S}\n"
+    timestamp = f"Transcript Date : {datetime.now().strftime("%m%d%Y%H%M%S")}\n"
 
     # Use lock to ensure thread-safety
     with lock:
