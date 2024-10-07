@@ -29,8 +29,11 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
     Returns:
         Transcribed text with optional speaker labels.
     """
+    timestamp = f"Transcript Date : {datetime.datetime.now(tz=datetime.timezone.utc):%Y-%m-%d %H:%M:%S}\n"
+
     # Use lock to ensure thread-safety
     with lock:
+
         # Transcribe the audio once using Whisper
         transcription = model.transcribe(file_path)
 
@@ -73,7 +76,7 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
             # Append the result with the speaker label
             result.append(f"Speaker {speaker_label}: {text}")
 
-        return "\n".join(result)
+        return timestamp + "\n".join(result)
 
 def process_transcription_background(file_path: str, transcript_file_path: str, diarization: bool):
     """
