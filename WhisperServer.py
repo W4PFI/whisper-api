@@ -7,6 +7,7 @@ import io
 import threading
 import uuid
 from datetime import datetime
+from zoneinfo import tzlocal
 from pyannote.audio import Pipeline
 
 app = FastAPI()
@@ -29,7 +30,7 @@ def transcribe_and_diarize(file_path: str, diarization: bool = False) -> str:
     Returns:
         Transcribed text with optional speaker labels.
     """
-    timestamp = f"Transcript Date : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+    timestamp = f"Transcript Date : {datetime.now(tzlocal).strftime('%Y-%m-%d %H:%M:%S')}\n"
     
     # Use lock to ensure thread-safety
     with lock:
